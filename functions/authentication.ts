@@ -16,7 +16,7 @@ export const login = (id: string, res: NextApiResponse) => {
 }
 
 export const getUserId = (res: NextApiRequest) => {
-	const token = res.headers.cookie?.split('=')[1].split(';')[0]
+	const token = res.headers.cookie?.split('token=')[1].split(';')[0]
 
 	if (!token) return null
 
