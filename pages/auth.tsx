@@ -39,13 +39,7 @@ export default function Login() {
 				<meta name='viewport' content='width=device-width, initial-scale=1' />
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
-			<main
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '2rem',
-				}}
-			>
+			<main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 				<input
 					type='email'
 					placeholder='Email'
@@ -59,12 +53,8 @@ export default function Login() {
 					value={password}
 					onChange={e => setPassword(e.target.value)}
 				/>
-				<div
-					style={{
-						display: 'flex',
-						gap: '2rem',
-					}}
-				>
+
+				<div style={{ display: 'flex', gap: '2rem' }}>
 					<button style={{ flex: 1 }} type='button' onClick={handleLogin}>
 						Login
 					</button>
@@ -75,11 +65,7 @@ export default function Login() {
 
 				{!!error && (
 					<p
-						style={{
-							color: '#b00020',
-							fontWeight: 'bold',
-							fontSize: '0.8rem',
-						}}
+						style={{ color: '#b00020', fontWeight: 'bold', fontSize: '0.8rem' }}
 					>
 						{error}
 					</p>

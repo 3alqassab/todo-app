@@ -67,13 +67,7 @@ const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
 					onChange={e => setDeadline(new Date(e.target.value))}
 				/>
 
-				<div
-					style={{
-						display: 'flex',
-						gap: '1rem',
-						marginTop: '1rem',
-					}}
-				>
+				<div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
 					<button style={{ flex: 1 }} type='button' onClick={onClose}>
 						Cancel
 					</button>
@@ -147,23 +141,14 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 				}}
 			>
 				<div
-					style={{
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '0.4rem',
-					}}
+					style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
 				>
 					<span>{title}</span>
 					<span>{description}</span>
 					<span>{dayjs(deadline).format('DD/MM/YYYY H:mma')}</span>
 				</div>
 
-				<div
-					style={{
-						display: 'flex',
-						gap: '1rem',
-					}}
-				>
+				<div style={{ display: 'flex', gap: '1rem' }}>
 					<button
 						style={{ flex: 1 }}
 						type='button'
@@ -252,13 +237,7 @@ export default function Home(
 				<meta name='viewport' content='width=device-width, initial-scale=1' />
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
-			<main
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '2rem',
-				}}
-			>
+			<main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 				<div
 					style={{
 						display: 'grid',
