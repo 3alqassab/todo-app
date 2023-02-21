@@ -16,7 +16,7 @@ const handleGet = async (req: NextApiRequest, res: NextApiResponse<Data>) => {
 
 	const todos = await database.todo.findMany({
 		where: { userId: id },
-		orderBy: { deadline: 'desc' },
+		orderBy: { deadline: 'asc' },
 	})
 
 	return res.status(200).json(todos)
