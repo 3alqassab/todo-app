@@ -30,6 +30,7 @@ export default function Login() {
 				password,
 			})
 			.then(() => router.push('/'))
+			.catch(() => setError('User already exists'))
 	}
 
 	return (
@@ -40,38 +41,51 @@ export default function Login() {
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
 
-			<main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-				<input
-					type='email'
-					placeholder='Email'
-					value={email}
-					onChange={e => setEmail(e.target.value)}
-				/>
+			<main className='flex h-screen w-screen items-center justify-center'>
+				<div className='flex flex-col gap-4 overflow-hidden rounded-md shadow-lg'>
+					<div className='flex flex-col gap-2 p-4'>
+						<label htmlFor='email'>Email</label>
+						<input
+							id='email'
+							type='email'
+							placeholder='Email'
+							className='mb-6 rounded-lg border-2 p-2'
+							value={email}
+							onChange={e => setEmail(e.target.value)}
+						/>
 
-				<input
-					type='password'
-					placeholder='Password'
-					value={password}
-					onChange={e => setPassword(e.target.value)}
-				/>
+						<label htmlFor='password'>Password</label>
+						<input
+							id='password'
+							type='password'
+							placeholder='Password'
+							className='rounded-lg border-2 p-2'
+							value={password}
+							onChange={e => setPassword(e.target.value)}
+						/>
+					</div>
+					{!!error && (
+						<p className='px-2 text-sm font-bold text-red-500'>{error}</p>
+					)}
 
-				<div style={{ display: 'flex', gap: '2rem' }}>
-					<button style={{ flex: 1 }} type='button' onClick={handleLogin}>
-						Login
-					</button>
+					<div className='flex h-12'>
+						<button
+							className='flex-1 bg-green-200'
+							type='button'
+							onClick={handleLogin}
+						>
+							Login
+						</button>
 
-					<button style={{ flex: 1 }} type='button' onClick={handleRegister}>
-						Register
-					</button>
+						<button
+							className='flex-1 bg-yellow-200'
+							type='button'
+							onClick={handleRegister}
+						>
+							Register
+						</button>
+					</div>
 				</div>
-
-				{!!error && (
-					<p
-						style={{ color: '#b00020', fontWeight: 'bold', fontSize: '0.8rem' }}
-					>
-						{error}
-					</p>
-				)}
 			</main>
 		</>
 	)

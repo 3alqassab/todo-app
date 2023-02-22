@@ -21,28 +21,9 @@ const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
 	}
 
 	return (
-		<div
-			style={{
-				position: 'fixed',
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				backgroundColor: 'rgba(0, 0, 0, 0.5)',
-				display: 'flex',
-				justifyContent: 'center',
-				alignItems: 'center',
-			}}
-		>
+		<div className='absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center bg-opacity-50 backdrop-blur-sm'>
 			<form
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1rem',
-					padding: '1rem',
-					backgroundColor: 'white',
-					borderRadius: '0.5rem',
-				}}
+				className='flex flex-col gap-4 rounded-md bg-white p-4 shadow-lg'
 				onSubmit={handleSubmitForm}
 			>
 				<label htmlFor='title'>Title</label>
@@ -50,33 +31,36 @@ const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
 					id='title'
 					type='text'
 					value={title}
-					style={{ flex: 1 }}
+					className='mb-6 flex-1 rounded-lg border-2 p-2'
 					required
 					onChange={e => setTitle(e.target.value)}
 				/>
+
 				<label htmlFor='description'>Description</label>
 				<textarea
 					id='description'
 					value={description}
-					style={{ flex: 1, minHeight: '200px', minWidth: '400px' }}
-					required
+					cols={30}
+					className='mb-6 flex-1 rounded-lg border-2 p-2'
+					rows={10}
 					onChange={e => setDescription(e.target.value)}
 				/>
+
 				<label htmlFor='deadline'>Deadline</label>
 				<input
 					id='deadline'
 					type='datetime-local'
 					value={dayjs(deadline).format('YYYY-MM-DDTHH:mm')}
-					style={{ flex: 1 }}
+					className='mb-6 flex-1 rounded-lg border-2 p-2'
 					required
 					onChange={e => setDeadline(new Date(e.target.value))}
 				/>
 
-				<div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-					<button style={{ flex: 1 }} type='button' onClick={onClose}>
+				<div className='mt-4 flex gap-4'>
+					<button className='flex-1' type='button' onClick={onClose}>
 						Cancel
 					</button>
-					<button style={{ flex: 1 }} type='submit'>
+					<button className='flex-1' type='submit'>
 						Submit
 					</button>
 				</div>
@@ -134,48 +118,76 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 			})
 	}
 
+	const isCompleted = status === 'COMPLETED'
+
 	return (
 		<>
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					border: '1px solid #ccc',
-					padding: '1rem',
-					gap: '1rem',
-					opacity: status === 'COMPLETED' ? 0.3 : 1,
-				}}
-			>
+			<div className='flex gap-4 rounded-md border border-gray-300'>
 				<div
-					style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+					className={`flex flex-1 flex-col gap-2 p-4 ${
+						isCompleted ? 'opacity-40' : ''
+					}`}
 				>
-					<span>{title}</span>
-					<span>{description}</span>
-					<span>{dayjs(deadline).format('DD/MM/YYYY H:mma')}</span>
+					<span
+						className={`flex items-center gap-2 break-all ${
+							isCompleted ? 'line-through' : ''
+						}`}
+					>
+						<i className='fa-solid fa-heading' />
+						{title}
+					</span>
+
+					{!!description && (
+						<span
+							className={`flex items-center gap-2 break-all ${
+								isCompleted ? 'line-through' : ''
+							}`}
+						>
+							<i className='fa-regular fa-file-lines' /> {description}
+						</span>
+					)}
+
+					<span
+						className={`flex items-center gap-2 ${
+							isCompleted ? 'line-through' : ''
+						}`}
+					>
+						<i className='fa-regular fa-clock' />
+						{dayjs(deadline).format('DD/MM/YYYY H:mma')}
+					</span>
 				</div>
 
-				<div style={{ display: 'flex', gap: '1rem' }}>
+				<div className='flex w-20 flex-col'>
 					<button
-						style={{ flex: 1 }}
+						className={`flex-1
+          ${isCompleted ? 'bg-red-200' : 'bg-green-200'}`}
 						type='button'
 						onClick={handleToggleStatus}
 					>
-						Mark as {status === 'COMPLETED' ? 'Not Completed' : 'Completed'}
+						<i
+							className={`fa-solid ${
+								isCompleted ? 'fa-rotate-left' : 'fa-check'
+							}`}
+						></i>
 					</button>
 
-					{status === 'COMPLETED' && (
-						<button style={{ flex: 1 }} type='button' onClick={handleArchive}>
-							Archive
+					{isCompleted && (
+						<button
+							className='flex-1 bg-orange-200'
+							type='button'
+							onClick={handleArchive}
+						>
+							<i className='fa-regular fa-folder' />
 						</button>
 					)}
 
-					{status === 'NOT_COMPLETED' && (
+					{!isCompleted && (
 						<button
-							style={{ flex: 1 }}
+							className='flex-1 bg-yellow-200'
 							type='button'
 							onClick={() => setShowEditModal(true)}
 						>
-							Edit
+							<i className='fa-regular fa-pen-to-square' />
 						</button>
 					)}
 				</div>
@@ -199,7 +211,7 @@ interface TodoProps extends TodoType {}
 export default function Home(
 	props: Awaited<InferGetStaticPropsType<typeof getServerSideProps>>,
 ) {
-	const { completedTodos, notCompletedTodos, archivedTodos } = props
+	const { completedTodos, notCompletedTodos } = props
 
 	const router = useRouter()
 
@@ -235,40 +247,28 @@ export default function Home(
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
 
-			<main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-				<div
-					style={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						gap: '2rem',
-					}}
-				>
-					<h1>Ali's Todo App!</h1>
-					<button type='button' onClick={handleLogout}>
-						Logout
-					</button>
-				</div>
+			<main className='flex flex-col gap-8 p-8'>
+				<div className='flex justify-between gap-8'>
+					<div className='flex gap-4'>
+						<h1 className='text-3xl'>Ali's Todo App!</h1>
 
-				<div
-					style={{ gap: '0.3rem', display: 'flex', flexDirection: 'column' }}
-				>
-					<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-						<h2>Todo</h2>
 						<button type='button' onClick={() => setShowAddModal(val => !val)}>
-							Add Todo
+							<i className='fa-solid fa-plus' /> Add Todo
 						</button>
 					</div>
 
-					<div
-						style={{ gap: '1rem', display: 'flex', flexDirection: 'column' }}
-					>
-						{notCompletedTodos.map(todo => (
-							<Todo key={todo.id} {...todo} />
-						))}
-						{completedTodos.map(todo => (
-							<Todo key={todo.id} {...todo} />
-						))}
-					</div>
+					<button type='button' onClick={handleLogout}>
+						<i className='fa-solid fa-arrow-right-from-bracket' /> Logout
+					</button>
+				</div>
+
+				<div className='flex flex-col gap-4'>
+					{notCompletedTodos.map(todo => (
+						<Todo key={todo.id} {...todo} />
+					))}
+					{completedTodos.map(todo => (
+						<Todo key={todo.id} {...todo} />
+					))}
 				</div>
 			</main>
 

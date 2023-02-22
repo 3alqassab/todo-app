@@ -29,7 +29,11 @@
 	"devDependencies": {
 		"@404-software/eslint-config": "^1.0.13",
 		"@types/jsonwebtoken": "^9.0.1",
+		"autoprefixer": "^10.4.13",
+		"postcss": "^8.4.21",
 		"prettier": "^2.8.4",
-		"prisma": "^4.10.1"
+		"prettier-plugin-tailwindcss": "^0.2.3",
+		"prisma": "^4.10.1",
+		"tailwindcss": "^3.2.7"
 	}
 }
