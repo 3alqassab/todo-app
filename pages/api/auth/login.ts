@@ -1,16 +1,12 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import { login } from '@/functions/authentication'
 import { PrismaClient } from '@prisma/client'
+import { withSessionRoute } from '@/functions/withSession'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 const database = new PrismaClient()
 
 type Data = string
 
-export default async function handler(
-	req: NextApiRequest,
-	res: NextApiResponse<Data>,
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
 	if (!req.body?.email || !req.body?.password)
 		return res.status(400).send('Bad Request')
 
@@ -24,7 +20,10 @@ export default async function handler(
 		return res.status(401).send('Unauthorized')
 	}
 
-	login(user.id, res)
+	req.session.user = { id: user.id }
+	await req.session.save()
 
 	return res.status(200).send('Logged in')
 }
+
+export default withSessionRoute(handler)

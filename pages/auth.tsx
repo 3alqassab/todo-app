@@ -14,7 +14,7 @@ export default function Login() {
 	const handleLogin = async () => {
 		setError('')
 		await axios
-			.post('/api/auth/login', {
+			.post('http://localhost:3000/api/auth/login', {
 				email,
 				password,
 			})
@@ -25,7 +25,7 @@ export default function Login() {
 	const handleRegister = async () => {
 		setError('')
 		await axios
-			.post('/api/auth/register', {
+			.post('http://localhost:3000/api/auth/register', {
 				email,
 				password,
 			})
@@ -39,6 +39,7 @@ export default function Login() {
 				<meta name='viewport' content='width=device-width, initial-scale=1' />
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
+
 			<main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 				<input
 					type='email'
@@ -58,6 +59,7 @@ export default function Login() {
 					<button style={{ flex: 1 }} type='button' onClick={handleLogin}>
 						Login
 					</button>
+
 					<button style={{ flex: 1 }} type='button' onClick={handleRegister}>
 						Register
 					</button>

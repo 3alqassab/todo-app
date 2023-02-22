@@ -1,9 +1,14 @@
-import { InferGetStaticPropsType, NextPageContext } from 'next'
+import { InferGetStaticPropsType } from 'next'
+import { Todo as TodoType } from '@/types'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
+import { withSessionSsr } from '@/functions/withSession'
 import axios from 'axios'
 import dayjs from 'dayjs'
 import Head from 'next/head'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL
+if (!API_URL) throw new Error('API_URL is not defined')
 
 const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
 	const [title, setTitle] = useState(rest.title || '')
@@ -95,7 +100,7 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 
 	const handleToggleStatus = async () => {
 		await axios
-			.put(`/api/todos/${id}`, {
+			.put(`${API_URL}/api/todos/${id}`, {
 				status: status === 'COMPLETED' ? 'NOT_COMPLETED' : 'COMPLETED',
 			})
 			.then(() => {
@@ -109,7 +114,7 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 		description?: string,
 	) => {
 		await axios
-			.put(`/api/todos/${id}`, {
+			.put(`${API_URL}/api/todos/${id}`, {
 				title,
 				description,
 				deadline,
@@ -121,7 +126,7 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 
 	const handleArchive = async () => {
 		await axios
-			.put(`/api/todos/${id}`, {
+			.put(`${API_URL}/api/todos/${id}`, {
 				status: 'ARCHIVED',
 			})
 			.then(() => {
@@ -138,6 +143,7 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 					border: '1px solid #ccc',
 					padding: '1rem',
 					gap: '1rem',
+					opacity: status === 'COMPLETED' ? 0.3 : 1,
 				}}
 			>
 				<div
@@ -188,28 +194,13 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 	)
 }
 
-interface TodoProps {
-	id: string
-	deadline: Date
-	status: string
-	title: string
-	description: string
-}
-
-export const getServerSideProps = async ({ req, res }: NextPageContext) => {
-	const { data } = await axios.get('http://localhost:3000/api/todos', {
-		headers: { cookie: req?.headers.cookie },
-	})
-
-	return {
-		props: { todos: data as TodoProps[] },
-	}
-}
+interface TodoProps extends TodoType {}
 
 export default function Home(
-	props: InferGetStaticPropsType<typeof getServerSideProps>,
+	props: Awaited<InferGetStaticPropsType<typeof getServerSideProps>>,
 ) {
-	const { todos } = props
+	const { completedTodos, notCompletedTodos, archivedTodos } = props
+
 	const router = useRouter()
 
 	const [showAddModal, setShowAddModal] = useState(false)
@@ -220,7 +211,7 @@ export default function Home(
 		description?: string,
 	) => {
 		await axios
-			.post('/api/todos', {
+			.post(`${API_URL}/api/todos`, {
 				title,
 				deadline,
 				description,
@@ -230,6 +221,12 @@ export default function Home(
 			})
 	}
 
+	const handleLogout = async () => {
+		await axios.post(`${API_URL}/api/auth/logout`).then(() => {
+			router.push('/auth')
+		})
+	}
+
 	return (
 		<>
 			<Head>
@@ -237,51 +234,40 @@ export default function Home(
 				<meta name='viewport' content='width=device-width, initial-scale=1' />
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
+
 			<main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 				<div
 					style={{
-						display: 'grid',
-						gridTemplateColumns: '1fr 1fr',
+						display: 'flex',
+						justifyContent: 'space-between',
 						gap: '2rem',
 					}}
 				>
-					<div
-						style={{ gap: '0.3rem', display: 'flex', flexDirection: 'column' }}
-					>
-						<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-							<h2>Todo</h2>
-							<button
-								type='button'
-								onClick={() => setShowAddModal(val => !val)}
-							>
-								Add Todo
-							</button>
-						</div>
+					<h1>Ali's Todo App!</h1>
+					<button type='button' onClick={handleLogout}>
+						Logout
+					</button>
+				</div>
 
-						<div
-							style={{ gap: '1rem', display: 'flex', flexDirection: 'column' }}
-						>
-							{todos
-								.filter(todo => todo.status === 'NOT_COMPLETED')
-								.map(todo => (
-									<Todo key={todo.id} {...todo} />
-								))}
-						</div>
+				<div
+					style={{ gap: '0.3rem', display: 'flex', flexDirection: 'column' }}
+				>
+					<div style={{ display: 'flex', justifyContent: 'space-between' }}>
+						<h2>Todo</h2>
+						<button type='button' onClick={() => setShowAddModal(val => !val)}>
+							Add Todo
+						</button>
 					</div>
 
 					<div
-						style={{ gap: '0.3rem', display: 'flex', flexDirection: 'column' }}
+						style={{ gap: '1rem', display: 'flex', flexDirection: 'column' }}
 					>
-						<h2>Done</h2>
-						<div
-							style={{ gap: '1rem', display: 'flex', flexDirection: 'column' }}
-						>
-							{todos
-								.filter(todo => todo.status === 'COMPLETED')
-								.map(todo => (
-									<Todo key={todo.id} {...todo} />
-								))}
-						</div>
+						{notCompletedTodos.map(todo => (
+							<Todo key={todo.id} {...todo} />
+						))}
+						{completedTodos.map(todo => (
+							<Todo key={todo.id} {...todo} />
+						))}
 					</div>
 				</div>
 			</main>
@@ -295,3 +281,32 @@ export default function Home(
 		</>
 	)
 }
+
+export const getServerSideProps = withSessionSsr<{
+	completedTodos: TodoType[]
+	notCompletedTodos: TodoType[]
+	archivedTodos: TodoType[]
+}>(async ({ req }) => {
+	const loggedIn = !!req.session.user?.id
+
+	if (!loggedIn)
+		return {
+			redirect: {
+				destination: '/auth',
+				permanent: false,
+			},
+			props: { todos: [] },
+		}
+
+	const { data } = await axios.get<TodoType[]>(`${API_URL}/api/todos`, {
+		headers: { cookie: req.headers.cookie },
+	})
+
+	return {
+		props: {
+			completedTodos: data.filter(todo => todo.status === 'COMPLETED'),
+			notCompletedTodos: data.filter(todo => todo.status === 'NOT_COMPLETED'),
+			archivedTodos: data.filter(todo => todo.status === 'ARCHIVED'),
+		},
+	}
+})
