@@ -1,228 +1,16 @@
 import { InferGetStaticPropsType } from 'next'
+import { Todo } from '@/components/Todo'
+import { TodoModal } from '@/components/TodoModal'
+import { TodoType, UpdateTodoType } from '@/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { withSessionSsr } from '@/functions/withSession'
 import axios from 'axios'
-import dayjs from 'dayjs'
 import Head from 'next/head'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 if (!API_URL) throw new Error('API_URL is not defined')
-
-interface TodoType {
-	id: string
-	deadline: Date
-	status: string
-	title: string
-	description: string
-}
-
-interface UpdateTodo {
-	deadline?: Date
-	status?: string
-	title?: string
-	description?: string
-}
-
-const TodoModal = ({ onSubmit, onClose, loading, ...rest }: TodoModalProps) => {
-	const [title, setTitle] = useState(rest.title || '')
-	const [description, setDescription] = useState(rest.description || '')
-	const [deadline, setDeadline] = useState(rest.deadline || new Date())
-
-	const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault()
-		onSubmit({ title, deadline, description })
-	}
-
-	return (
-		<div className='absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center bg-opacity-50 backdrop-blur-sm'>
-			<form
-				className='flex flex-col gap-4 rounded-md bg-white p-4 shadow-lg'
-				onSubmit={handleSubmitForm}
-			>
-				<label htmlFor='title'>Title</label>
-				<input
-					id='title'
-					type='text'
-					value={title}
-					className='mb-6 flex-1 rounded-lg border-2 p-2'
-					required
-					onChange={e => setTitle(e.target.value)}
-				/>
-
-				<label htmlFor='description'>Description</label>
-				<textarea
-					id='description'
-					value={description}
-					cols={30}
-					className='mb-6 flex-1 rounded-lg border-2 p-2'
-					rows={10}
-					onChange={e => setDescription(e.target.value)}
-				/>
-
-				<label htmlFor='deadline'>Deadline</label>
-				<input
-					id='deadline'
-					type='datetime-local'
-					value={dayjs(deadline).format('YYYY-MM-DDTHH:mm')}
-					className='mb-6 flex-1 rounded-lg border-2 p-2'
-					required
-					onChange={e => setDeadline(new Date(e.target.value))}
-				/>
-
-				<div className='mt-4 flex gap-4'>
-					<button
-						className='flex-1'
-						disabled={loading}
-						type='button'
-						onClick={onClose}
-					>
-						Cancel
-					</button>
-
-					<button className='flex-1' disabled={loading} type='submit'>
-						Submit
-					</button>
-				</div>
-			</form>
-		</div>
-	)
-}
-
-interface TodoModalProps {
-	onSubmit: (data: UpdateTodo) => void
-	onClose: () => void
-	title?: string
-	deadline?: Date
-	description?: string
-	loading?: boolean
-}
-
-const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
-	const queryClient = useQueryClient()
-
-	const [showEditModal, setShowEditModal] = useState(false)
-
-	const isCompleted = status === 'COMPLETED'
-
-	const { mutate: handleToggleStatus, isLoading: handleRegisterLoading } =
-		useMutation({
-			mutationFn: () =>
-				axios.put(`/api/todos/${id}`, {
-					status: isCompleted ? 'NOT_COMPLETED' : 'COMPLETED',
-				}),
-			onSuccess: () => queryClient.invalidateQueries(['todos']),
-		})
-
-	const { mutate: handleUpdate, isLoading: handleUpdateLoading } = useMutation({
-		mutationFn: (todo: UpdateTodo) => axios.put(`/api/todos/${id}`, todo),
-		onSuccess: () => {
-			queryClient.invalidateQueries(['todos'])
-			setShowEditModal(false)
-		},
-	})
-
-	const { mutate: handleArchive, isLoading: handleArchiveLoading } =
-		useMutation({
-			mutationFn: () => axios.put(`/api/todos/${id}`, { status: 'ARCHIVED' }),
-			onSuccess: () => queryClient.invalidateQueries(['todos']),
-		})
-
-	const isLoading =
-		handleRegisterLoading || handleUpdateLoading || handleArchiveLoading
-
-	return (
-		<>
-			<div className='flex gap-4 rounded-md border border-gray-300'>
-				<div
-					className={`flex flex-1 flex-col gap-2 p-4 ${
-						isCompleted ? 'opacity-40' : ''
-					}`}
-				>
-					<span
-						className={`flex items-center gap-2 break-all ${
-							isCompleted ? 'line-through' : ''
-						}`}
-					>
-						<i className='fa-solid fa-heading' />
-						{title}
-					</span>
-
-					{!!description && (
-						<span
-							className={`flex items-center gap-2 break-all ${
-								isCompleted ? 'line-through' : ''
-							}`}
-						>
-							<i className='fa-regular fa-file-lines' /> {description}
-						</span>
-					)}
-
-					<span
-						className={`flex items-center gap-2 ${
-							isCompleted ? 'line-through' : ''
-						}`}
-					>
-						<i className='fa-regular fa-clock' />
-						{dayjs(deadline).format('DD/MM/YYYY h:mma')}
-					</span>
-				</div>
-
-				<div className='flex w-20 flex-col'>
-					<button
-						className={`flex-1
-          ${isCompleted ? 'bg-red-200' : 'bg-green-200'}`}
-						type='button'
-						disabled={isLoading}
-						onClick={() => handleToggleStatus()}
-					>
-						<i
-							className={`fa-solid ${
-								isCompleted ? 'fa-rotate-left' : 'fa-check'
-							}`}
-						></i>
-					</button>
-
-					{isCompleted && (
-						<button
-							className='flex-1 bg-orange-200'
-							type='button'
-							disabled={isLoading}
-							onClick={() => handleArchive()}
-						>
-							<i className='fa-regular fa-folder' />
-						</button>
-					)}
-
-					{!isCompleted && (
-						<button
-							className='flex-1 bg-yellow-200'
-							type='button'
-							disabled={isLoading}
-							onClick={() => setShowEditModal(true)}
-						>
-							<i className='fa-regular fa-pen-to-square' />
-						</button>
-					)}
-				</div>
-			</div>
-
-			{showEditModal && (
-				<TodoModal
-					title={title}
-					deadline={deadline}
-					description={description}
-					loading={isLoading}
-					onClose={() => setShowEditModal(false)}
-					onSubmit={data => handleUpdate(data)}
-				/>
-			)}
-		</>
-	)
-}
-
-interface TodoProps extends TodoType {}
 
 export default function Home(
 	props: Awaited<InferGetStaticPropsType<typeof getServerSideProps>>,
@@ -250,7 +38,7 @@ export default function Home(
 
 	const { mutate: handleSubmitTodo, isLoading: handleSubmitTodoLoading } =
 		useMutation({
-			mutationFn: (todo: UpdateTodo) => axios.post('/api/todos', todo),
+			mutationFn: (todo: UpdateTodoType) => axios.post('/api/todos', todo),
 			onSuccess: () => queryClient.invalidateQueries(['todos']),
 		})
 
@@ -292,6 +80,7 @@ export default function Home(
 					{notCompletedTodos.map(todo => (
 						<Todo key={todo.id} {...todo} />
 					))}
+
 					{completedTodos.map(todo => (
 						<Todo key={todo.id} {...todo} />
 					))}
@@ -308,6 +97,7 @@ export default function Home(
 		</>
 	)
 }
+
 type Data = {
 	initialData: {
 		completedTodos: TodoType[]
@@ -321,10 +111,7 @@ export const getServerSideProps = withSessionSsr<Data>(async ({ req }) => {
 
 	if (!loggedIn)
 		return {
-			redirect: {
-				destination: '/auth',
-				permanent: false,
-			},
+			redirect: { destination: '/auth', permanent: false },
 			props: { todos: [] },
 		}
 
