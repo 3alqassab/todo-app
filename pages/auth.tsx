@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import axios from 'axios'
@@ -11,27 +12,20 @@ export default function Login() {
 
 	const [error, setError] = useState('')
 
-	const handleLogin = async () => {
-		setError('')
-		await axios
-			.post('http://localhost:3000/api/auth/login', {
-				email,
-				password,
-			})
-			.then(() => router.push('/'))
-			.catch(() => setError('Invalid credentials'))
-	}
+	const { mutate: handleLogin, isLoading: handleLoginLoading } = useMutation({
+		mutationFn: () => axios.post('/api/auth/login', { email, password }),
+		onSuccess: () => router.push('/'),
+		onError: () => setError('Invalid credentials'),
+	})
 
-	const handleRegister = async () => {
-		setError('')
-		await axios
-			.post('http://localhost:3000/api/auth/register', {
-				email,
-				password,
-			})
-			.then(() => router.push('/'))
-			.catch(() => setError('User already exists'))
-	}
+	const { mutate: handleRegister, isLoading: handleRegisterLoading } =
+		useMutation({
+			mutationFn: () => axios.post('/api/auth/register', { email, password }),
+			onSuccess: () => router.push('/'),
+			onError: () => setError('User already exists'),
+		})
+
+	const isLoading = handleLoginLoading || handleRegisterLoading
 
 	return (
 		<>
@@ -51,6 +45,7 @@ export default function Login() {
 							placeholder='Email'
 							className='mb-6 rounded-lg border-2 p-2'
 							value={email}
+							disabled={isLoading}
 							onChange={e => setEmail(e.target.value)}
 						/>
 
@@ -61,6 +56,7 @@ export default function Login() {
 							placeholder='Password'
 							className='rounded-lg border-2 p-2'
 							value={password}
+							disabled={isLoading}
 							onChange={e => setPassword(e.target.value)}
 						/>
 					</div>
@@ -72,7 +68,8 @@ export default function Login() {
 						<button
 							className='flex-1 bg-green-200'
 							type='button'
-							onClick={handleLogin}
+							disabled={isLoading}
+							onClick={() => handleLogin()}
 						>
 							Login
 						</button>
@@ -80,7 +77,8 @@ export default function Login() {
 						<button
 							className='flex-1 bg-yellow-200'
 							type='button'
-							onClick={handleRegister}
+							disabled={isLoading}
+							onClick={() => handleRegister()}
 						>
 							Register
 						</button>

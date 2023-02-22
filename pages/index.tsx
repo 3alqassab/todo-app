@@ -1,5 +1,6 @@
 import { InferGetStaticPropsType } from 'next'
-import { Todo as TodoType } from '@/types'
+import { Todo as TodoType, UpdateTodo } from '@/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { withSessionSsr } from '@/functions/withSession'
@@ -10,14 +11,14 @@ import Head from 'next/head'
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 if (!API_URL) throw new Error('API_URL is not defined')
 
-const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
+const TodoModal = ({ onSubmit, onClose, loading, ...rest }: TodoModalProps) => {
 	const [title, setTitle] = useState(rest.title || '')
 	const [description, setDescription] = useState(rest.description || '')
 	const [deadline, setDeadline] = useState(rest.deadline || new Date())
 
 	const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
-		onSubmit(title, deadline, description)
+		onSubmit({ title, deadline, description })
 	}
 
 	return (
@@ -57,10 +58,16 @@ const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
 				/>
 
 				<div className='mt-4 flex gap-4'>
-					<button className='flex-1' type='button' onClick={onClose}>
+					<button
+						className='flex-1'
+						disabled={loading}
+						type='button'
+						onClick={onClose}
+					>
 						Cancel
 					</button>
-					<button className='flex-1' type='submit'>
+
+					<button className='flex-1' disabled={loading} type='submit'>
 						Submit
 					</button>
 				</div>
@@ -70,53 +77,44 @@ const TodoModal = ({ onSubmit, onClose, ...rest }: TodoModalProps) => {
 }
 
 interface TodoModalProps {
-	onSubmit: (title?: string, deadline?: Date, description?: string) => void
+	onSubmit: (data: UpdateTodo) => void
 	onClose: () => void
 	title?: string
 	deadline?: Date
 	description?: string
+	loading?: boolean
 }
 
 const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
-	const router = useRouter()
+	const queryClient = useQueryClient()
 
 	const [showEditModal, setShowEditModal] = useState(false)
 
-	const handleToggleStatus = async () => {
-		await axios
-			.put(`${API_URL}/api/todos/${id}`, {
-				status: status === 'COMPLETED' ? 'NOT_COMPLETED' : 'COMPLETED',
-			})
-			.then(() => {
-				router.reload()
-			})
-	}
+	const { mutate: handleToggleStatus, isLoading: handleRegisterLoading } =
+		useMutation({
+			mutationFn: () =>
+				axios.put(`/api/todos/${id}`, {
+					status: status === 'COMPLETED' ? 'NOT_COMPLETED' : 'COMPLETED',
+				}),
+			onSuccess: () => queryClient.invalidateQueries(['todos']),
+		})
 
-	const handleUpdate = async (
-		title?: string,
-		deadline?: Date,
-		description?: string,
-	) => {
-		await axios
-			.put(`${API_URL}/api/todos/${id}`, {
-				title,
-				description,
-				deadline,
-			})
-			.then(() => {
-				router.reload()
-			})
-	}
+	const { mutate: handleUpdate, isLoading: handleUpdateLoading } = useMutation({
+		mutationFn: (todo: UpdateTodo) => axios.put(`/api/todos/${id}`, todo),
+		onSuccess: () => queryClient.invalidateQueries(['todos']),
+	})
 
-	const handleArchive = async () => {
-		await axios
-			.put(`${API_URL}/api/todos/${id}`, {
-				status: 'ARCHIVED',
-			})
-			.then(() => {
-				router.reload()
-			})
-	}
+	const { mutate: handleArchive, isLoading: handleArchiveLoading } =
+		useMutation({
+			mutationFn: () =>
+				axios.put(`/api/todos/${id}`, {
+					status: 'ARCHIVED',
+				}),
+			onSuccess: () => queryClient.invalidateQueries(['todos']),
+		})
+
+	const isLoading =
+		handleRegisterLoading || handleUpdateLoading || handleArchiveLoading
 
 	const isCompleted = status === 'COMPLETED'
 
@@ -162,7 +160,8 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 						className={`flex-1
           ${isCompleted ? 'bg-red-200' : 'bg-green-200'}`}
 						type='button'
-						onClick={handleToggleStatus}
+						disabled={isLoading}
+						onClick={() => handleToggleStatus()}
 					>
 						<i
 							className={`fa-solid ${
@@ -175,7 +174,8 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 						<button
 							className='flex-1 bg-orange-200'
 							type='button'
-							onClick={handleArchive}
+							disabled={isLoading}
+							onClick={() => handleArchive()}
 						>
 							<i className='fa-regular fa-folder' />
 						</button>
@@ -185,6 +185,7 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 						<button
 							className='flex-1 bg-yellow-200'
 							type='button'
+							disabled={isLoading}
 							onClick={() => setShowEditModal(true)}
 						>
 							<i className='fa-regular fa-pen-to-square' />
@@ -198,8 +199,9 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 					title={title}
 					deadline={deadline}
 					description={description}
+					loading={isLoading}
 					onClose={() => setShowEditModal(false)}
-					onSubmit={(...data) => handleUpdate(...data)}
+					onSubmit={data => handleUpdate(data)}
 				/>
 			)}
 		</>
@@ -211,33 +213,49 @@ interface TodoProps extends TodoType {}
 export default function Home(
 	props: Awaited<InferGetStaticPropsType<typeof getServerSideProps>>,
 ) {
-	const { completedTodos, notCompletedTodos } = props
-
 	const router = useRouter()
+	const queryClient = useQueryClient()
 
 	const [showAddModal, setShowAddModal] = useState(false)
 
-	const handleSubmitTodo = async (
-		title?: string,
-		deadline?: Date,
-		description?: string,
-	) => {
-		await axios
-			.post(`${API_URL}/api/todos`, {
-				title,
-				deadline,
-				description,
-			})
-			.then(() => {
-				router.reload()
-			})
-	}
+	const {
+		data: { completedTodos, notCompletedTodos },
+		isLoading: todosLoading,
+	} = useQuery(
+		['todos'],
+		() =>
+			axios.get<TodoType[]>('/api/todos').then(({ data }) => ({
+				completedTodos: data.filter(
+					(todo: TodoType) => todo.status === 'COMPLETED',
+				),
+				notCompletedTodos: data.filter(
+					(todo: TodoType) => todo.status === 'NOT_COMPLETED',
+				),
+				archivedTodos: data.filter(
+					(todo: TodoType) => todo.status === 'ARCHIVED',
+				),
+			})),
+		{
+			initialData: {
+				completedTodos: props.completedTodos,
+				notCompletedTodos: props.notCompletedTodos,
+				archivedTodos: props.archivedTodos,
+			},
+		},
+	)
 
-	const handleLogout = async () => {
-		await axios.post(`${API_URL}/api/auth/logout`).then(() => {
-			router.push('/auth')
+	const { mutate: handleSubmitTodo, isLoading: handleSubmitTodoLoading } =
+		useMutation({
+			mutationFn: (todo: UpdateTodo) => axios.post('/api/todos', todo),
+			onSuccess: () => queryClient.invalidateQueries(['todos']),
 		})
-	}
+
+	const { mutate: handleLogout, isLoading: handleLogoutLoading } = useMutation({
+		mutationFn: () => axios.post('/api/auth/logout'),
+		onSuccess: () => router.push('/auth'),
+	})
+
+	if (todosLoading) return <div>Loading...</div>
 
 	return (
 		<>
@@ -257,7 +275,11 @@ export default function Home(
 						</button>
 					</div>
 
-					<button type='button' onClick={handleLogout}>
+					<button
+						type='button'
+						disabled={handleLogoutLoading}
+						onClick={() => handleLogout()}
+					>
 						<i className='fa-solid fa-arrow-right-from-bracket' /> Logout
 					</button>
 				</div>
@@ -274,8 +296,9 @@ export default function Home(
 
 			{showAddModal && (
 				<TodoModal
+					loading={handleSubmitTodoLoading}
 					onClose={() => setShowAddModal(false)}
-					onSubmit={(...data) => handleSubmitTodo(...data)}
+					onSubmit={data => handleSubmitTodo(data)}
 				/>
 			)}
 		</>
