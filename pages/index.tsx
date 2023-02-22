@@ -153,7 +153,7 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 						}`}
 					>
 						<i className='fa-regular fa-clock' />
-						{dayjs(deadline).format('DD/MM/YYYY H:mma')}
+						{dayjs(deadline).format('DD/MM/YYYY h:mma')}
 					</span>
 				</div>
 
