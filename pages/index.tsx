@@ -1,5 +1,4 @@
 import { InferGetStaticPropsType } from 'next'
-import { Todo as TodoType, UpdateTodo } from '@/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -10,6 +9,21 @@ import Head from 'next/head'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 if (!API_URL) throw new Error('API_URL is not defined')
+
+interface TodoType {
+	id: string
+	deadline: Date
+	status: string
+	title: string
+	description: string
+}
+
+interface UpdateTodo {
+	deadline?: Date
+	status?: string
+	title?: string
+	description?: string
+}
 
 const TodoModal = ({ onSubmit, onClose, loading, ...rest }: TodoModalProps) => {
 	const [title, setTitle] = useState(rest.title || '')
@@ -90,33 +104,33 @@ const Todo = ({ id, deadline, status, title, description }: TodoProps) => {
 
 	const [showEditModal, setShowEditModal] = useState(false)
 
+	const isCompleted = status === 'COMPLETED'
+
 	const { mutate: handleToggleStatus, isLoading: handleRegisterLoading } =
 		useMutation({
 			mutationFn: () =>
 				axios.put(`/api/todos/${id}`, {
-					status: status === 'COMPLETED' ? 'NOT_COMPLETED' : 'COMPLETED',
+					status: isCompleted ? 'NOT_COMPLETED' : 'COMPLETED',
 				}),
 			onSuccess: () => queryClient.invalidateQueries(['todos']),
 		})
 
 	const { mutate: handleUpdate, isLoading: handleUpdateLoading } = useMutation({
 		mutationFn: (todo: UpdateTodo) => axios.put(`/api/todos/${id}`, todo),
-		onSuccess: () => queryClient.invalidateQueries(['todos']),
+		onSuccess: () => {
+			queryClient.invalidateQueries(['todos'])
+			setShowEditModal(false)
+		},
 	})
 
 	const { mutate: handleArchive, isLoading: handleArchiveLoading } =
 		useMutation({
-			mutationFn: () =>
-				axios.put(`/api/todos/${id}`, {
-					status: 'ARCHIVED',
-				}),
+			mutationFn: () => axios.put(`/api/todos/${id}`, { status: 'ARCHIVED' }),
 			onSuccess: () => queryClient.invalidateQueries(['todos']),
 		})
 
 	const isLoading =
 		handleRegisterLoading || handleUpdateLoading || handleArchiveLoading
-
-	const isCompleted = status === 'COMPLETED'
 
 	return (
 		<>
@@ -213,6 +227,8 @@ interface TodoProps extends TodoType {}
 export default function Home(
 	props: Awaited<InferGetStaticPropsType<typeof getServerSideProps>>,
 ) {
+	const { initialData } = props
+
 	const router = useRouter()
 	const queryClient = useQueryClient()
 
@@ -221,28 +237,16 @@ export default function Home(
 	const {
 		data: { completedTodos, notCompletedTodos },
 		isLoading: todosLoading,
-	} = useQuery(
-		['todos'],
-		() =>
+	} = useQuery({
+		queryKey: ['todos'],
+		queryFn: () =>
 			axios.get<TodoType[]>('/api/todos').then(({ data }) => ({
-				completedTodos: data.filter(
-					(todo: TodoType) => todo.status === 'COMPLETED',
-				),
-				notCompletedTodos: data.filter(
-					(todo: TodoType) => todo.status === 'NOT_COMPLETED',
-				),
-				archivedTodos: data.filter(
-					(todo: TodoType) => todo.status === 'ARCHIVED',
-				),
+				completedTodos: data.filter(todo => todo.status === 'COMPLETED'),
+				notCompletedTodos: data.filter(todo => todo.status === 'NOT_COMPLETED'),
+				archivedTodos: data.filter(todo => todo.status === 'ARCHIVED'),
 			})),
-		{
-			initialData: {
-				completedTodos: props.completedTodos,
-				notCompletedTodos: props.notCompletedTodos,
-				archivedTodos: props.archivedTodos,
-			},
-		},
-	)
+		initialData,
+	})
 
 	const { mutate: handleSubmitTodo, isLoading: handleSubmitTodoLoading } =
 		useMutation({
@@ -304,12 +308,15 @@ export default function Home(
 		</>
 	)
 }
+type Data = {
+	initialData: {
+		completedTodos: TodoType[]
+		notCompletedTodos: TodoType[]
+		archivedTodos: TodoType[]
+	}
+}
 
-export const getServerSideProps = withSessionSsr<{
-	completedTodos: TodoType[]
-	notCompletedTodos: TodoType[]
-	archivedTodos: TodoType[]
-}>(async ({ req }) => {
+export const getServerSideProps = withSessionSsr<Data>(async ({ req }) => {
 	const loggedIn = !!req.session.user?.id
 
 	if (!loggedIn)
@@ -327,9 +334,11 @@ export const getServerSideProps = withSessionSsr<{
 
 	return {
 		props: {
-			completedTodos: data.filter(todo => todo.status === 'COMPLETED'),
-			notCompletedTodos: data.filter(todo => todo.status === 'NOT_COMPLETED'),
-			archivedTodos: data.filter(todo => todo.status === 'ARCHIVED'),
+			initialData: {
+				completedTodos: data.filter(todo => todo.status === 'COMPLETED'),
+				notCompletedTodos: data.filter(todo => todo.status === 'NOT_COMPLETED'),
+				archivedTodos: data.filter(todo => todo.status === 'ARCHIVED'),
+			},
 		},
 	}
 })

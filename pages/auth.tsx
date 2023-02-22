@@ -60,6 +60,7 @@ export default function Login() {
 							onChange={e => setPassword(e.target.value)}
 						/>
 					</div>
+
 					{!!error && (
 						<p className='px-2 text-sm font-bold text-red-500'>{error}</p>
 					)}
