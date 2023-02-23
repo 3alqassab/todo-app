@@ -12,8 +12,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
 
 	const { email, password } = req.body
 
-	const user = await database.user.findUnique({
-		where: { email },
+	const user = await database.user.findFirst({
+		where: { email: { equals: email, mode: 'insensitive' } },
 	})
 
 	if (!user || user.password !== password) {
